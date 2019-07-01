@@ -22,60 +22,83 @@ public class PlayerController : MonoBehaviour
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
     private const KeyCode RIGHT_KEY = KeyCode.D;
+    private const KeyCode CROUCH_KEY = KeyCode.S;
     private const KeyCode SPRINT_KEY = KeyCode.LeftShift;
 
-    public Rigidbody2D rb;
+    private Rigidbody2D rb;
+    private Animator animator;
+    private BoxCollider2D boxCollider;
+
     private Timer jumpTime;
     private bool jumped = false;
     private int stamina = 1000;
+    private int moveDistance = MOVE_DISTANCE;
 
     // Start is called before the first frame update
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
+        boxCollider = GetComponent<BoxCollider2D>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (!Input.GetKey(JUMP_KEY) && Input.GetKey(LEFT_KEY) && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        float hDirection = Input.GetAxis("Horizontal");
+        float vDirection = Input.GetAxis("Vertical");
+
+        if (!Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
-            move(-1 * MOVE_DISTANCE, STAMINA_WALK_BONUS, false);
+            move(-1 * moveDistance, STAMINA_WALK_BONUS, false);
             transform.localScale = new Vector2(-1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && Input.GetKey(LEFT_KEY) && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (!Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             //Debug.Log("sprint");
-            move(-1 * MOVE_DISTANCE * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
+            move(-1 * moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
             transform.localScale = new Vector2(-1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && Input.GetKey(RIGHT_KEY) && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        else if (!Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
-            move(MOVE_DISTANCE, STAMINA_WALK_BONUS, false);
+            move(moveDistance, STAMINA_WALK_BONUS, false);
             transform.localScale = new Vector2(1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && Input.GetKey(RIGHT_KEY) && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (!Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             //Debug.Log("sprint");
-            move(MOVE_DISTANCE * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
+            move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
             transform.localScale = new Vector2(1, 1);
         }
         else
         {
-            if(stamina < STAMINA_MAX)
+            animator.SetBool("crouching", false);
+            animator.SetBool("running", false);
+            if (stamina < STAMINA_MAX)
             {
                 stamina += STAMINA_WAIT_BONUS;
             }
         }
 
-        if (Input.GetKeyDown(JUMP_KEY))
+        if (vDirection > 0)
         {
             jump();
+        }
+        if (Input.GetKey(CROUCH_KEY))
+        {
+            moveDistance = MOVE_DISTANCE / 2;
+            animator.SetBool("crouching", true);
+        }
+        if(Input.GetKeyUp(CROUCH_KEY))
+        {
+            moveDistance = MOVE_DISTANCE;
         }
     }
 
     private void move (int xValue, int staminaValue, bool penalty)
     {
+        animator.SetBool("crouching", false);
+        animator.SetBool("running", true);
         rb.velocity = new Vector2(xValue, rb.velocity.y);
 
         if(penalty)
