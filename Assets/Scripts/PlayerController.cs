@@ -17,7 +17,6 @@ public class PlayerController : MonoBehaviour
     private const int STAMINA_WALK_BONUS = 1;
     private const int RUN_MIN_STAMINA = 100;
     private const int JUMP_MIN_STAMINA = 50;
-    private const int JUMP_WAIT = 2000;
 
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
@@ -28,11 +27,13 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private Animator animator;
     private BoxCollider2D boxCollider;
+    [SerializeField] private LayerMask ground;
 
-    private Timer jumpTime;
-    private bool jumped = false;
     private int stamina = 1000;
     private int moveDistance = MOVE_DISTANCE;
+
+    private enum State {idling, running, jumping, crouching, falling}
+    private State state = State.idling;
 
     // Start is called before the first frame update
     void Start()
@@ -48,57 +49,84 @@ public class PlayerController : MonoBehaviour
         float hDirection = Input.GetAxis("Horizontal");
         float vDirection = Input.GetAxis("Vertical");
 
-        if (!Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
-            move(-1 * moveDistance, STAMINA_WALK_BONUS, false);
+            Move(-1 * moveDistance, STAMINA_WALK_BONUS, false);
             transform.localScale = new Vector2(-1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
-            //Debug.Log("sprint");
-            move(-1 * moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
+            Move(-1 * moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
             transform.localScale = new Vector2(-1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        else if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
-            move(moveDistance, STAMINA_WALK_BONUS, false);
+            Move(moveDistance, STAMINA_WALK_BONUS, false);
             transform.localScale = new Vector2(1, 1);
         }
-        else if (!Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
-            //Debug.Log("sprint");
-            move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
+            Move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
             transform.localScale = new Vector2(1, 1);
         }
-        else
+        else if (stamina < STAMINA_MAX)
         {
-            animator.SetBool("crouching", false);
-            animator.SetBool("running", false);
-            if (stamina < STAMINA_MAX)
-            {
-                stamina += STAMINA_WAIT_BONUS;
-            }
+            stamina += STAMINA_WAIT_BONUS;
         }
 
-        if (vDirection > 0)
+        if (Input.GetButtonDown("Jump") && boxCollider.IsTouchingLayers(ground))
         {
-            jump();
+            Jump();
         }
-        if (Input.GetKey(CROUCH_KEY))
+        if (Input.GetKey(CROUCH_KEY) && boxCollider.IsTouchingLayers(ground))
         {
             moveDistance = MOVE_DISTANCE / 2;
-            animator.SetBool("crouching", true);
+            state = State.crouching;
         }
         if(Input.GetKeyUp(CROUCH_KEY))
         {
             moveDistance = MOVE_DISTANCE;
+            state = State.idling;
+        }
+
+        SwitchStateVelocity();
+        animator.SetInteger("state", (int)state);
+
+    }
+
+    private void SwitchStateVelocity()
+    {
+        if(state == State.jumping)
+        {
+            if(rb.velocity.y < Mathf.Epsilon)
+            {
+                state = State.falling;
+            }
+        }
+        else if(state == State.falling)
+        {
+            if(boxCollider.IsTouchingLayers(ground))
+            {
+                state = State.idling;
+            }
+        }
+        else if(state == State.crouching)
+        {
+
+        }
+        else if(Math.Abs(rb.velocity.x) > 1f)
+        {
+            // moving
+            state = State.running;
+        }
+        else
+        {
+            state = State.idling;
         }
     }
 
-    private void move (int xValue, int staminaValue, bool penalty)
+    private void Move (int xValue, int staminaValue, bool penalty)
     {
-        animator.SetBool("crouching", false);
-        animator.SetBool("running", true);
         rb.velocity = new Vector2(xValue, rb.velocity.y);
 
         if(penalty)
@@ -118,32 +146,14 @@ public class PlayerController : MonoBehaviour
         
     }
 
-    private void jump()
+    private void Jump()
     {
-        if(!this.jumped && stamina >= JUMP_MIN_STAMINA)
+        if(stamina >= JUMP_MIN_STAMINA)
         {
             rb.velocity = new Vector2(rb.velocity.x, JUMP_HEIGHT);
-            this.jumped = true;
-
-            SetTimer();
-
             stamina += STAMINA_JUMP_PENALTY;
+            state = State.jumping;
         }
-    }
-
-    private void SetTimer()
-    {
-        // Create a timer with a two second interval.
-        this.jumpTime = new System.Timers.Timer(JUMP_WAIT);
-        // Hook up the Elapsed event for the timer. 
-        this.jumpTime.Elapsed += new ElapsedEventHandler(OnTimedEvent);
-        this.jumpTime.AutoReset = false;
-        this.jumpTime.Enabled = true;
-    }
-
-    private void OnTimedEvent(object source, ElapsedEventArgs e)
-    {
-        this.jumped = false;  
     }
 
 }
