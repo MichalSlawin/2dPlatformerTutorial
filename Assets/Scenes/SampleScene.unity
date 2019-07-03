@@ -543,7 +543,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -0.076259136, y: -0.29798532}
+  m_Offset: {x: -0.04658413, y: -0.29798532}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -554,7 +554,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1.1057959, y: 1.4040294}
+  m_Size: {x: 0.9870968, y: 1.4040294}
   m_EdgeRadius: 0
 --- !u!114 &942024169
 MonoBehaviour:
@@ -568,6 +568,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78eeea2a2bd75784fa4ed7b2b502f312, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ground:
+    serializedVersion: 2
+    m_Bits: 256
 --- !u!95 &942024170
 Animator:
   serializedVersion: 3
@@ -866,7 +869,7 @@ GameObject:
   - component: {fileID: 1414002548}
   - component: {fileID: 1414002552}
   - component: {fileID: 1414002551}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Tilemap
   m_TagString: Untagged
   m_Icon: {fileID: 0}

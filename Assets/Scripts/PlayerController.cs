@@ -6,8 +6,8 @@ using System;
 
 public class PlayerController : MonoBehaviour
 {
-    private const int MOVE_DISTANCE = 2;
-    private const int JUMP_HEIGHT = 5;
+    private const float MOVE_DISTANCE = 2;
+    private const float JUMP_HEIGHT = 5;
     private const int RUN_MULTIPLIER_BONUS = 2;
     private const int STAMINA_MAX = 1000;
     private const int STAMINA_MIN = 0;
@@ -17,6 +17,8 @@ public class PlayerController : MonoBehaviour
     private const int STAMINA_WALK_BONUS = 1;
     private const int RUN_MIN_STAMINA = 100;
     private const int JUMP_MIN_STAMINA = 50;
+    private const int CROUCH_MOVE_DIVIDER = 2;
+    private const float MOVE_LIMIT = 1f;
 
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
@@ -30,7 +32,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask ground;
 
     private int stamina = 1000;
-    private int moveDistance = MOVE_DISTANCE;
+    [SerializeField] private float moveDistance = MOVE_DISTANCE;
+    [SerializeField] private float jumpHeight = JUMP_HEIGHT;
 
     private enum State {idling, running, jumping, crouching, falling}
     private State state = State.idling;
@@ -46,17 +49,27 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        ManageInput();
+
+        SwitchStateVelocity();
+
+        animator.SetInteger("state", (int)state);
+
+    }
+
+    private void ManageInput()
+    {
         float hDirection = Input.GetAxis("Horizontal");
         float vDirection = Input.GetAxis("Vertical");
 
         if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
-            Move(-1 * moveDistance, STAMINA_WALK_BONUS, false);
+            Move(-moveDistance, STAMINA_WALK_BONUS, false);
             transform.localScale = new Vector2(-1, 1);
         }
         else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
-            Move(-1 * moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
+            Move(-moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
             transform.localScale = new Vector2(-1, 1);
         }
         else if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
@@ -80,18 +93,14 @@ public class PlayerController : MonoBehaviour
         }
         if (Input.GetKey(CROUCH_KEY) && boxCollider.IsTouchingLayers(ground))
         {
-            moveDistance = MOVE_DISTANCE / 2;
+            moveDistance = MOVE_DISTANCE / CROUCH_MOVE_DIVIDER;
             state = State.crouching;
         }
-        if(Input.GetKeyUp(CROUCH_KEY))
+        if (Input.GetKeyUp(CROUCH_KEY))
         {
             moveDistance = MOVE_DISTANCE;
             state = State.idling;
         }
-
-        SwitchStateVelocity();
-        animator.SetInteger("state", (int)state);
-
     }
 
     private void SwitchStateVelocity()
@@ -114,9 +123,8 @@ public class PlayerController : MonoBehaviour
         {
 
         }
-        else if(Math.Abs(rb.velocity.x) > 1f)
+        else if(Math.Abs(rb.velocity.x) > MOVE_LIMIT)
         {
-            // moving
             state = State.running;
         }
         else
@@ -125,7 +133,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Move (int xValue, int staminaValue, bool penalty)
+    private void Move (float xValue, int staminaValue, bool penalty)
     {
         rb.velocity = new Vector2(xValue, rb.velocity.y);
 
@@ -150,7 +158,7 @@ public class PlayerController : MonoBehaviour
     {
         if(stamina >= JUMP_MIN_STAMINA)
         {
-            rb.velocity = new Vector2(rb.velocity.x, JUMP_HEIGHT);
+            rb.velocity = new Vector2(rb.velocity.x, jumpHeight);
             stamina += STAMINA_JUMP_PENALTY;
             state = State.jumping;
         }
