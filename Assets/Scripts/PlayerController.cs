@@ -1,13 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.Timers;
+﻿using UnityEngine;
 using System;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
-    private const float MOVE_DISTANCE = 2;
-    private const float JUMP_HEIGHT = 5;
+    private const float MOVE_DISTANCE = 3.5f;
+    private const float JUMP_HEIGHT = 5.5f;
     private const int RUN_MULTIPLIER_BONUS = 2;
     private const int STAMINA_MAX = 1000;
     private const int STAMINA_MIN = 0;
@@ -19,6 +17,7 @@ public class PlayerController : MonoBehaviour
     private const int JUMP_MIN_STAMINA = 50;
     private const int CROUCH_MOVE_DIVIDER = 2;
     private const float MOVE_LIMIT = 1f;
+    private const int GEMS_NUM = 10;
 
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
@@ -31,12 +30,17 @@ public class PlayerController : MonoBehaviour
     private BoxCollider2D boxCollider;
     [SerializeField] private LayerMask ground;
 
-    private int stamina = 1000;
+    private int stamina = STAMINA_MAX;
+    [SerializeField] Text staminaText;
     [SerializeField] private float moveDistance = MOVE_DISTANCE;
     [SerializeField] private float jumpHeight = JUMP_HEIGHT;
 
     private enum State {idling, running, jumping, crouching, falling}
     private State state = State.idling;
+
+    private int gemsCollected = 0;
+    [SerializeField] private int gemsLeft = GEMS_NUM;
+    [SerializeField] private Text gemsText;
 
     // Start is called before the first frame update
     void Start()
@@ -44,6 +48,9 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         boxCollider = GetComponent<BoxCollider2D>();
+
+        gemsText.text = gemsLeft.ToString();
+        staminaText.text = stamina.ToString();
     }
 
     // Update is called once per frame
@@ -55,6 +62,19 @@ public class PlayerController : MonoBehaviour
 
         animator.SetInteger("state", (int)state);
 
+        staminaText.text = stamina.ToString();
+
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if(collision.tag == "Collectable")
+        {
+            Destroy(collision.gameObject);
+            gemsCollected += 1;
+            gemsLeft -= 1;
+            gemsText.text = gemsLeft.ToString();
+        }
     }
 
     private void ManageInput()
