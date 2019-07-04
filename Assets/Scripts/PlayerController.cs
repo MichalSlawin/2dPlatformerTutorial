@@ -14,7 +14,7 @@ public class PlayerController : MonoBehaviour
     private const int STAMINA_WAIT_BONUS = 2;
     private const int STAMINA_WALK_BONUS = 1;
     private const int RUN_MIN_STAMINA = 100;
-    private const int JUMP_MIN_STAMINA = 50;
+    private const int JUMP_MIN_STAMINA = 100;
     private const int CROUCH_MOVE_DIVIDER = 2;
     private const float MOVE_LIMIT = 1f;
     private const int GEMS_NUM = 10;
@@ -35,7 +35,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveDistance = MOVE_DISTANCE;
     [SerializeField] private float jumpHeight = JUMP_HEIGHT;
 
-    private enum State {idling, running, jumping, crouching, falling}
+    private enum State {idling, running, jumping, crouching, falling, hurt}
     private State state = State.idling;
 
     private int gemsCollected = 0;
@@ -56,8 +56,11 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        ManageInput();
-
+        if(state != State.hurt)
+        {
+            ManageInput();
+        }
+        
         SwitchStateVelocity();
 
         animator.SetInteger("state", (int)state);
@@ -66,14 +69,39 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void OnTriggerEnter2D(Collider2D collider)
     {
-        if(collision.tag == "Collectable")
+        if(collider.tag == "Collectable")
         {
-            Destroy(collision.gameObject);
+            Destroy(collider.gameObject);
             gemsCollected += 1;
             gemsLeft -= 1;
             gemsText.text = gemsLeft.ToString();
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(collision.gameObject.tag == "Enemy")
+        {
+            if(state == State.falling)
+            {
+                Destroy(collision.gameObject);
+                Jump();
+            }
+            else
+            {
+                state = State.hurt;
+
+                if(collision.gameObject.transform.position.x > transform.position.x)
+                {
+                    Move(-MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                }
+                else
+                {
+                    Move(MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                }
+            }
         }
     }
 
@@ -104,7 +132,14 @@ public class PlayerController : MonoBehaviour
         }
         else if (stamina < STAMINA_MAX)
         {
-            stamina += STAMINA_WAIT_BONUS;
+            if(stamina == STAMINA_MAX-1)
+            {
+                stamina += STAMINA_WAIT_BONUS-1;
+            }
+            else
+            {
+                stamina += STAMINA_WAIT_BONUS;
+            }
         }
 
         if (Input.GetButtonDown("Jump") && boxCollider.IsTouchingLayers(ground))
@@ -118,7 +153,6 @@ public class PlayerController : MonoBehaviour
         }
         if (Input.GetKeyUp(CROUCH_KEY))
         {
-            moveDistance = MOVE_DISTANCE;
             state = State.idling;
         }
     }
@@ -142,6 +176,14 @@ public class PlayerController : MonoBehaviour
         else if(state == State.crouching)
         {
 
+        }
+        else if(state == State.hurt)
+        {
+            if(Math.Abs(rb.velocity.x) < MOVE_LIMIT)
+            {
+                state = State.idling;
+                moveDistance = MOVE_DISTANCE;
+            }
         }
         else if(Math.Abs(rb.velocity.x) > MOVE_LIMIT)
         {
