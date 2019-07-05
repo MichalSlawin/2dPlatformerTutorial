@@ -18,6 +18,8 @@ public class PlayerController : MonoBehaviour
     private const int CROUCH_MOVE_DIVIDER = 2;
     private const float MOVE_LIMIT = 1f;
     private const int GEMS_NUM = 10;
+    private const int HEALTH_POINTS = 100;
+    private const int ENEMY_ATTACK_DAMAGE = 20;
 
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
@@ -35,6 +37,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveDistance = MOVE_DISTANCE;
     [SerializeField] private float jumpHeight = JUMP_HEIGHT;
 
+    private int healthPoints = HEALTH_POINTS;
+    [SerializeField] private Text healthText;
+
     private enum State {idling, running, jumping, crouching, falling, hurt}
     private State state = State.idling;
 
@@ -51,6 +56,7 @@ public class PlayerController : MonoBehaviour
 
         gemsText.text = gemsLeft.ToString();
         staminaText.text = stamina.ToString();
+        healthText.text = healthPoints.ToString();
     }
 
     // Update is called once per frame
@@ -62,7 +68,6 @@ public class PlayerController : MonoBehaviour
         }
         
         SwitchStateVelocity();
-
         animator.SetInteger("state", (int)state);
 
         staminaText.text = stamina.ToString();
@@ -92,6 +97,8 @@ public class PlayerController : MonoBehaviour
             else
             {
                 state = State.hurt;
+                healthPoints -= ENEMY_ATTACK_DAMAGE;
+                healthText.text = healthPoints.ToString();
 
                 if(collision.gameObject.transform.position.x > transform.position.x)
                 {
@@ -154,6 +161,7 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyUp(CROUCH_KEY))
         {
             state = State.idling;
+            moveDistance = MOVE_DISTANCE;
         }
     }
 
