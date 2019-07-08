@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FrogAI : MonoBehaviour
+public class Frog : Enemy
 {
     private const float JUMP_LENGTH = 4f;
     private const float JUMP_HEIGHT = 6f;
@@ -11,34 +11,28 @@ public class FrogAI : MonoBehaviour
     [SerializeField] private float rightCap;
 
     private float jumpLength = JUMP_LENGTH;
-    private float jumpHeight = JUMP_HEIGHT;
+    [SerializeField] private float jumpHeight = JUMP_HEIGHT;
 
     private bool facingLeft = true;
     [SerializeField] private LayerMask ground;
 
     private Rigidbody2D rb;
-    private Animator animator;
     private BoxCollider2D boxCollider;
 
     private enum State {idling, jumping, falling}
     private State state = State.idling;
 
     // Start is called before the first frame update
-    void Start()
+    protected override void Start()
     {
+        base.Start();
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
         boxCollider = GetComponent<BoxCollider2D>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (state == State.idling)
-        {
-            ManageMovement();
-        }
-        
         SwitchState();
         animator.SetInteger("state", (int)state);
     }
@@ -51,7 +45,6 @@ public class FrogAI : MonoBehaviour
             {
                 if (boxCollider.IsTouchingLayers(ground))
                 {
-                    transform.localScale = new Vector2(1, 1);
                     Jump(true);
                     state = State.jumping;
                 }
@@ -59,6 +52,7 @@ public class FrogAI : MonoBehaviour
             else
             {
                 facingLeft = false;
+                transform.localScale = new Vector2(-1, 1);
             }
         }
         else
@@ -67,7 +61,6 @@ public class FrogAI : MonoBehaviour
             {
                 if (boxCollider.IsTouchingLayers(ground))
                 {
-                    transform.localScale = new Vector2(-1, 1);
                     Jump(false);
                     state = State.jumping;
                 }
@@ -75,6 +68,7 @@ public class FrogAI : MonoBehaviour
             else
             {
                 facingLeft = true;
+                transform.localScale = new Vector2(1, 1);
             }
         }
     }
@@ -112,4 +106,8 @@ public class FrogAI : MonoBehaviour
             rb.velocity = new Vector2(jumpLength, jumpHeight);
         }
     }
+
+    
+
+    
 }

@@ -17,7 +17,7 @@ public class PlayerController : MonoBehaviour
     private const int JUMP_MIN_STAMINA = 100;
     private const int CROUCH_MOVE_DIVIDER = 2;
     private const float MOVE_LIMIT = 1f;
-    private const int GEMS_NUM = 10;
+    private const int GEMS_NUM = 12;
     private const int HEALTH_POINTS = 100;
     private const int ENEMY_ATTACK_DAMAGE = 20;
 
@@ -26,6 +26,7 @@ public class PlayerController : MonoBehaviour
     private const KeyCode RIGHT_KEY = KeyCode.D;
     private const KeyCode CROUCH_KEY = KeyCode.S;
     private const KeyCode SPRINT_KEY = KeyCode.LeftShift;
+    private const KeyCode CHANGE_CHARACTER = KeyCode.R;
 
     private Rigidbody2D rb;
     private Animator animator;
@@ -40,12 +41,17 @@ public class PlayerController : MonoBehaviour
     private int healthPoints = HEALTH_POINTS;
     [SerializeField] private Text healthText;
 
-    private enum State {idling, running, jumping, crouching, falling, hurt}
+    private enum State {idling, running, jumping, crouching, falling, hurt, frozen}
     private State state = State.idling;
 
     private int gemsCollected = 0;
     [SerializeField] private int gemsLeft = GEMS_NUM;
     [SerializeField] private Text gemsText;
+
+    private CharacterChangeController characterChangeController;
+    private CameraController cameraController;
+
+    private bool turnedRight = true;
 
     // Start is called before the first frame update
     void Start()
@@ -57,17 +63,29 @@ public class PlayerController : MonoBehaviour
         gemsText.text = gemsLeft.ToString();
         staminaText.text = stamina.ToString();
         healthText.text = healthPoints.ToString();
+
+        characterChangeController = GameObject.FindObjectOfType(typeof(CharacterChangeController)) as CharacterChangeController;
+        cameraController = GameObject.FindObjectOfType(typeof(CameraController)) as CameraController;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(state != State.hurt)
+        if(state == State.idling || state == State.frozen)
+        {
+            ManageChangeCharacter();
+        }
+
+        if (state != State.hurt && state != State.frozen)
         {
             ManageInput();
         }
         
-        SwitchStateVelocity();
+        if(state != State.frozen)
+        {
+            SwitchStateVelocity();
+        }
+
         animator.SetInteger("state", (int)state);
 
         staminaText.text = stamina.ToString();
@@ -82,6 +100,10 @@ public class PlayerController : MonoBehaviour
             gemsCollected += 1;
             gemsLeft -= 1;
             gemsText.text = gemsLeft.ToString();
+            if(gemsLeft <= 0)
+            {
+                Destroy(this.gameObject);
+            }
         }
     }
 
@@ -89,25 +111,59 @@ public class PlayerController : MonoBehaviour
     {
         if(collision.gameObject.tag == "Enemy")
         {
+            Enemy enemy = collision.gameObject.GetComponent<Enemy>();
             if(state == State.falling)
             {
-                Destroy(collision.gameObject);
+                enemy.JupmedOn();
                 Jump();
             }
             else
             {
-                state = State.hurt;
-                healthPoints -= ENEMY_ATTACK_DAMAGE;
-                healthText.text = healthPoints.ToString();
+                if(state != State.frozen)
+                {
+                    print("collision");
+                    state = State.hurt;
+                    healthPoints -= ENEMY_ATTACK_DAMAGE;
+                    healthText.text = healthPoints.ToString();
+                }
+
+                if(healthPoints <= 0)
+                {
+                    print("nie żyż");
+                    Destroy(this.gameObject);
+                }
 
                 if(collision.gameObject.transform.position.x > transform.position.x)
                 {
-                    Move(-MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                    if(state != State.frozen)
+                    {
+                        Move(-MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                    }
                 }
                 else
                 {
-                    Move(MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                    if (state != State.frozen)
+                    {
+                        Move(MOVE_DISTANCE, STAMINA_JUMP_PENALTY, true);
+                    }
                 }
+            }
+        }
+    }
+
+    private void ManageChangeCharacter()
+    {
+        if (Input.GetKeyDown(CHANGE_CHARACTER))
+        {
+            characterChangeController.SwitchCharacter();
+
+            if (state == State.frozen)
+            {
+                state = State.idling;
+            }
+            else
+            {
+                state = State.frozen;
             }
         }
     }
@@ -119,23 +175,23 @@ public class PlayerController : MonoBehaviour
 
         if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
+            turnCharacter(false);
             Move(-moveDistance, STAMINA_WALK_BONUS, false);
-            transform.localScale = new Vector2(-1, 1);
         }
         else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
+            turnCharacter(false);
             Move(-moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
-            transform.localScale = new Vector2(-1, 1);
         }
         else if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
+            turnCharacter(true);
             Move(moveDistance, STAMINA_WALK_BONUS, false);
-            transform.localScale = new Vector2(1, 1);
         }
         else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
+            turnCharacter(true);
             Move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
-            transform.localScale = new Vector2(1, 1);
         }
         else if (stamina < STAMINA_MAX)
         {
@@ -162,6 +218,30 @@ public class PlayerController : MonoBehaviour
         {
             state = State.idling;
             moveDistance = MOVE_DISTANCE;
+        }
+    }
+
+    private void turnCharacter(bool right)
+    {
+        if(right)
+        {
+            if(!turnedRight)
+            {
+                transform.localScale = new Vector2(1, 1);
+                cameraController.swapOffsetX(true);
+
+                turnedRight = true;
+            }
+        }
+        else
+        {
+            if(turnedRight)
+            {
+                transform.localScale = new Vector2(-1, 1);
+                cameraController.swapOffsetX(false);
+
+                turnedRight = false;
+            }
         }
     }
 
