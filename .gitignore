@@ -60,3 +60,8 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
+
+# Sounds and music
+Assets/CasualGameSounds/
+Assets/Footstep(Snow and Grass)/
+Assets/Free Music Loops Collection/

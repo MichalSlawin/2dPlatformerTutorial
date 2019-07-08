@@ -33,6 +33,9 @@ public class PlayerController : MonoBehaviour
     private BoxCollider2D boxCollider;
     [SerializeField] private LayerMask ground;
 
+    [SerializeField] private AudioSource footstep;
+    [SerializeField] private AudioSource gemPicking;
+
     private int stamina = STAMINA_MAX;
     [SerializeField] Text staminaText;
     [SerializeField] private float moveDistance = MOVE_DISTANCE;
@@ -96,6 +99,7 @@ public class PlayerController : MonoBehaviour
     {
         if(collider.tag == "Collectable")
         {
+            gemPicking.Play();
             Destroy(collider.gameObject);
             gemsCollected += 1;
             gemsLeft -= 1;
@@ -121,7 +125,6 @@ public class PlayerController : MonoBehaviour
             {
                 if(state != State.frozen)
                 {
-                    print("collision");
                     state = State.hurt;
                     healthPoints -= ENEMY_ATTACK_DAMAGE;
                     healthText.text = healthPoints.ToString();
@@ -129,7 +132,6 @@ public class PlayerController : MonoBehaviour
 
                 if(healthPoints <= 0)
                 {
-                    print("nie żyż");
                     Destroy(this.gameObject);
                 }
 
@@ -173,22 +175,22 @@ public class PlayerController : MonoBehaviour
         float hDirection = Input.GetAxis("Horizontal");
         float vDirection = Input.GetAxis("Vertical");
 
-        if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        if (boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
             turnCharacter(false);
             Move(-moveDistance, STAMINA_WALK_BONUS, false);
         }
-        else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             turnCharacter(false);
             Move(-moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
         }
-        else if (boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        else if (boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
             turnCharacter(true);
             Move(moveDistance, STAMINA_WALK_BONUS, false);
         }
-        else if (state != State.crouching && boxCollider.IsTouchingLayers() && !Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             turnCharacter(true);
             Move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
@@ -228,7 +230,7 @@ public class PlayerController : MonoBehaviour
             if(!turnedRight)
             {
                 transform.localScale = new Vector2(1, 1);
-                cameraController.swapOffsetX(true);
+                //cameraController.swapOffsetX(true);
 
                 turnedRight = true;
             }
@@ -238,7 +240,7 @@ public class PlayerController : MonoBehaviour
             if(turnedRight)
             {
                 transform.localScale = new Vector2(-1, 1);
-                cameraController.swapOffsetX(false);
+                //cameraController.swapOffsetX(false);
 
                 turnedRight = false;
             }
@@ -314,4 +316,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void PlayFootsteps()
+    {
+        footstep.Play();
+    }
 }

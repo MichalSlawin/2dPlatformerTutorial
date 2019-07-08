@@ -11,6 +11,8 @@ public class EagleController : MonoBehaviour
     private enum State {idling, moving, frozen}
     private State state = State.frozen;
 
+    private bool turnedRight = false;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -53,10 +55,12 @@ public class EagleController : MonoBehaviour
 
         if(hDirection < 0)
         {
+            turnCharacter(false);
             iTween.MoveUpdate(this.gameObject, iTween.Hash("x", transform.position.x - MOVE_LENGTH, "y", transform.position.y, "time", MOVE_TIME));
         }
         else if(hDirection > 0)
         {
+            turnCharacter(true);
             iTween.MoveUpdate(this.gameObject, iTween.Hash("x", transform.position.x + MOVE_LENGTH, "y", transform.position.y, "time", MOVE_TIME));
         }
 
@@ -67,6 +71,30 @@ public class EagleController : MonoBehaviour
         else if (vDirection > 0)
         {
             iTween.MoveUpdate(this.gameObject, iTween.Hash("x", transform.position.x, "y", transform.position.y + MOVE_LENGTH, "time", MOVE_TIME));
+        }
+    }
+
+    private void turnCharacter(bool right)
+    {
+        if (right)
+        {
+            if (!turnedRight)
+            {
+                transform.localScale = new Vector2(-1, 1);
+                //cameraController.swapOffsetX(true);
+
+                turnedRight = true;
+            }
+        }
+        else
+        {
+            if (turnedRight)
+            {
+                transform.localScale = new Vector2(1, 1);
+                //cameraController.swapOffsetX(false);
+
+                turnedRight = false;
+            }
         }
     }
 }
