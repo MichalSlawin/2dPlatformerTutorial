@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
@@ -21,6 +22,9 @@ public class PlayerController : MonoBehaviour
     private const int HEALTH_POINTS = 100;
     private const int ENEMY_ATTACK_DAMAGE = 20;
 
+    private const string DEATH_SCENE_NAME = "DeathScene";
+    private const string VICTORY_SCENE_NAME = "VictoryScene";
+
     private const KeyCode JUMP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
     private const KeyCode RIGHT_KEY = KeyCode.D;
@@ -33,8 +37,10 @@ public class PlayerController : MonoBehaviour
     private BoxCollider2D boxCollider;
     [SerializeField] private LayerMask ground;
 
-    [SerializeField] private AudioSource footstep;
-    [SerializeField] private AudioSource gemPicking;
+    [SerializeField] private AudioSource footstepSound;
+    [SerializeField] private AudioSource gemPickingSound;
+    [SerializeField] private AudioSource jumpSound;
+    [SerializeField] private AudioSource hurtSound;
 
     private int stamina = STAMINA_MAX;
     [SerializeField] Text staminaText;
@@ -99,15 +105,16 @@ public class PlayerController : MonoBehaviour
     {
         if(collider.tag == "Collectable")
         {
-            gemPicking.Play();
+            gemPickingSound.Play();
             Destroy(collider.gameObject);
             gemsCollected += 1;
             gemsLeft -= 1;
             gemsText.text = gemsLeft.ToString();
-            if(gemsLeft <= 0)
-            {
-                Destroy(this.gameObject);
-            }
+        }
+
+        if(collider.tag == "Finish" && gemsLeft <= 0)
+        {
+            SceneManager.LoadScene(VICTORY_SCENE_NAME);
         }
     }
 
@@ -132,7 +139,7 @@ public class PlayerController : MonoBehaviour
 
                 if(healthPoints <= 0)
                 {
-                    Destroy(this.gameObject);
+                    SceneManager.LoadScene(DEATH_SCENE_NAME);
                 }
 
                 if(collision.gameObject.transform.position.x > transform.position.x)
@@ -316,8 +323,20 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+
+
     private void PlayFootsteps()
     {
-        footstep.Play();
+        footstepSound.Play();
+    }
+
+    private void PlayJump()
+    {
+        jumpSound.Play();
+    }
+
+    private void PlayHurt()
+    {
+        hurtSound.Play();
     }
 }
