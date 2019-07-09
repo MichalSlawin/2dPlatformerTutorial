@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Collectable
   - Enemy
+  - Powerup
+  - Ladder
   layers:
   - Default
   - TransparentFX
@@ -16,7 +18,7 @@ TagManager:
   - 
   - 
   - Ground
-  - 
+  - Ladder
   - 
   - 
   - 
@@ -48,6 +50,9 @@ TagManager:
     locked: 0
   - name: BgObjects
     uniqueID: 4205978759
+    locked: 0
+  - name: Ladders
+    uniqueID: 3740350517
     locked: 0
   - name: Entity
     uniqueID: 3123764327

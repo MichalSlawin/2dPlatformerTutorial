@@ -2,6 +2,7 @@
 using System;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class PlayerController : MonoBehaviour
 {
@@ -21,11 +22,14 @@ public class PlayerController : MonoBehaviour
     private const int GEMS_NUM = 12;
     private const int HEALTH_POINTS = 100;
     private const int ENEMY_ATTACK_DAMAGE = 20;
+    private const int POWERUP_DURATION = 10;
+    private const int FROGS_NUMBER = 2;
 
     private const string DEATH_SCENE_NAME = "DeathScene";
     private const string VICTORY_SCENE_NAME = "VictoryScene";
+    private const string SECOND_SCENE_NAME = "SecondScene";
 
-    private const KeyCode JUMP_KEY = KeyCode.W;
+    private const KeyCode UP_KEY = KeyCode.W;
     private const KeyCode LEFT_KEY = KeyCode.A;
     private const KeyCode RIGHT_KEY = KeyCode.D;
     private const KeyCode CROUCH_KEY = KeyCode.S;
@@ -36,6 +40,7 @@ public class PlayerController : MonoBehaviour
     private Animator animator;
     private BoxCollider2D boxCollider;
     [SerializeField] private LayerMask ground;
+    [SerializeField] private LayerMask ladder;
 
     [SerializeField] private AudioSource footstepSound;
     [SerializeField] private AudioSource gemPickingSound;
@@ -50,17 +55,20 @@ public class PlayerController : MonoBehaviour
     private int healthPoints = HEALTH_POINTS;
     [SerializeField] private Text healthText;
 
-    private enum State {idling, running, jumping, crouching, falling, hurt, frozen}
+    private enum State {idling, running, jumping, crouching, falling, hurt, frozen, climbing}
     private State state = State.idling;
 
     private int gemsCollected = 0;
     [SerializeField] private int gemsLeft = GEMS_NUM;
     [SerializeField] private Text gemsText;
 
+    [SerializeField] private int frogsLeft = FROGS_NUMBER;
+
     private CharacterChangeController characterChangeController;
     private CameraController cameraController;
 
-    private bool turnedRight = true;
+    private bool turnedRight;
+    private bool canClimb = false;
 
     // Start is called before the first frame update
     void Start()
@@ -75,6 +83,15 @@ public class PlayerController : MonoBehaviour
 
         characterChangeController = GameObject.FindObjectOfType(typeof(CharacterChangeController)) as CharacterChangeController;
         cameraController = GameObject.FindObjectOfType(typeof(CameraController)) as CameraController;
+
+        if(transform.localScale.x == 1)
+        {
+            turnedRight = true;
+        }
+        else
+        {
+            turnedRight = false;
+        }
     }
 
     // Update is called once per frame
@@ -112,9 +129,39 @@ public class PlayerController : MonoBehaviour
             gemsText.text = gemsLeft.ToString();
         }
 
+        if(collider.tag == "Powerup")
+        {
+            gemPickingSound.Play();
+            Destroy(collider.gameObject);
+            GetComponent<SpriteRenderer>().color = Color.yellow;
+            moveDistance = MOVE_DISTANCE * RUN_MULTIPLIER_BONUS;
+            StartCoroutine(CancelPowerup());
+        }
+
         if(collider.tag == "Finish" && gemsLeft <= 0)
         {
-            SceneManager.LoadScene(VICTORY_SCENE_NAME);
+            if(frogsLeft < 2)
+            {
+                SceneManager.LoadScene(VICTORY_SCENE_NAME);
+            }
+            else
+            {
+                SceneManager.LoadScene(SECOND_SCENE_NAME);
+            }
+        }
+
+        if(collider.tag == "Ladder")
+        {
+            canClimb = true;
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.tag == "Ladder")
+        {
+            canClimb = false;
+            state = State.idling;
         }
     }
 
@@ -127,6 +174,10 @@ public class PlayerController : MonoBehaviour
             {
                 enemy.JupmedOn();
                 Jump();
+                if(enemy.GetType() == typeof(Frog))
+                {
+                    frogsLeft--;
+                }
             }
             else
             {
@@ -182,22 +233,22 @@ public class PlayerController : MonoBehaviour
         float hDirection = Input.GetAxis("Horizontal");
         float vDirection = Input.GetAxis("Vertical");
 
-        if (boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        if ((boxCollider.IsTouchingLayers(ground) || boxCollider.IsTouchingLayers(ladder)) && hDirection < 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
             turnCharacter(false);
             Move(-moveDistance, STAMINA_WALK_BONUS, false);
         }
-        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && hDirection < 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             turnCharacter(false);
             Move(-moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
         }
-        else if (boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
+        else if ((boxCollider.IsTouchingLayers(ground) || boxCollider.IsTouchingLayers(ladder)) && hDirection > 0 && (!Input.GetKey(SPRINT_KEY) || (Input.GetKey(SPRINT_KEY) && stamina <= RUN_MIN_STAMINA)))
         {
             turnCharacter(true);
             Move(moveDistance, STAMINA_WALK_BONUS, false);
         }
-        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && !Input.GetKey(JUMP_KEY) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
+        else if (state != State.crouching && boxCollider.IsTouchingLayers(ground) && hDirection > 0 && Input.GetKey(SPRINT_KEY) && stamina > RUN_MIN_STAMINA)
         {
             turnCharacter(true);
             Move(moveDistance * RUN_MULTIPLIER_BONUS, STAMINA_RUN_PENALTY, true);
@@ -228,6 +279,12 @@ public class PlayerController : MonoBehaviour
             state = State.idling;
             moveDistance = MOVE_DISTANCE;
         }
+
+        if(canClimb && Input.GetKey(UP_KEY))
+        {
+            state = State.climbing;
+            transform.position = new Vector2(transform.position.x, transform.position.y + 0.2f);
+        }
     }
 
     private void turnCharacter(bool right)
@@ -237,6 +294,7 @@ public class PlayerController : MonoBehaviour
             if(!turnedRight)
             {
                 transform.localScale = new Vector2(1, 1);
+                
                 //cameraController.swapOffsetX(true);
 
                 turnedRight = true;
@@ -270,7 +328,7 @@ public class PlayerController : MonoBehaviour
                 state = State.idling;
             }
         }
-        else if(state == State.crouching)
+        else if(state == State.climbing || state == State.crouching)
         {
 
         }
@@ -323,6 +381,12 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private IEnumerator CancelPowerup()
+    {
+        yield return new WaitForSeconds(POWERUP_DURATION);
+        moveDistance = MOVE_DISTANCE;
+        GetComponent<SpriteRenderer>().color = Color.white;
+    }
 
 
     private void PlayFootsteps()
